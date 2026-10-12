@@ -1,0 +1,1169 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Engstar - THPT Đạ Tông (Bản Offline Độc Lập)</title>
+  <meta name="description" content="Engstar - THPT Đạ Tông: Hệ thống quản lý lớp học, gọi tên ngẫu nhiên, xếp nhóm và khen thưởng Tiếng Anh.">
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Canvas Confetti -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.4/dist/confetti.browser.min.js"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          colors: {
+            brand: {
+              green: '#047857',
+              dark: '#064E3B',
+              amber: '#D97706',
+              purple: '#6D28D9',
+              pastelGreen: '#A8E6CF',
+              pastelYellow: '#FFEAA7',
+              pastelPink: '#FFAAA5'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #FAF9F6; }
+    .radar-sweep {
+      background: conic-gradient(from 0deg, rgba(16, 185, 129, 0) 0deg, rgba(16, 185, 129, 0.4) 60deg, rgba(16, 185, 129, 0) 61deg);
+      animation: radarRotate 3s linear infinite;
+    }
+    @keyframes radarRotate {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    .hud-box {
+      box-shadow: 0 0 15px rgba(16, 185, 129, 0.5), inset 0 0 15px rgba(16, 185, 129, 0.2);
+    }
+  </style>
+<script src="/_aistudio-iframe.js?v=6634132a"></script></head>
+<body class="min-h-screen text-slate-800 flex flex-col selection:bg-amber-200">
+
+  <!-- TOP HEADER -->
+  <header class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+      <!-- Wordmark -->
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-400 via-amber-300 to-rose-400 flex items-center justify-center shadow-sm text-emerald-950 font-black text-xl">
+          ⭐
+        </div>
+        <div>
+          <div class="text-lg font-black tracking-tight text-slate-900 leading-none">
+            Eng<span class="text-emerald-600">star</span>
+          </div>
+          <div class="text-[10px] font-bold text-emerald-800 tracking-wider uppercase mt-0.5">
+            THPT ĐẠ TÔNG · LÂM ĐỒNG
+          </div>
+        </div>
+      </div>
+
+      <!-- Class Selector & Quick Controls -->
+      <div class="flex items-center gap-2 sm:gap-3">
+        <div class="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200">
+          <label class="text-[11px] font-bold text-slate-500 pl-2 hidden sm:inline">Lớp:</label>
+          <select id="classSelector" onchange="switchClass(this.value)" class="bg-white text-xs font-bold text-slate-800 rounded-lg px-2.5 py-1.5 border border-slate-300 outline-none cursor-pointer">
+            <option value="10A1">10A1 (Tự Nhiên)</option>
+            <option value="10A2">10A2 (Xã Hội)</option>
+            <option value="12A3">12A3 (Luyện Thi ĐH)</option>
+            <option value="12A5">12A5 (Tốt Nghiệp)</option>
+          </select>
+        </div>
+
+        <button onclick="openStudentLoginModal()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition-all cursor-pointer shadow-xs">
+          🔑 <span>Đăng Nhập HS</span>
+        </button>
+
+        <button onclick="window.print()" class="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all cursor-pointer">
+          🖨️ <span>In Danh Sách</span>
+        </button>
+
+        <div class="bg-emerald-50 border border-emerald-200 text-emerald-900 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1">
+          👩‍🏫 <span class="hidden sm:inline">GV:</span> Cô Trinh
+        </div>
+      </div>
+    </div>
+
+    <!-- MAIN NAVIGATION TABS -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 flex items-center gap-1 overflow-x-auto py-1 border-t border-slate-100">
+      <button onclick="setTab('picker')" id="nav-picker" class="tab-btn px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 bg-emerald-600 text-white shadow-xs">
+        🎯 <span>Gọi Tên Ngẫu Nhiên (5 Kiểu)</span>
+      </button>
+      <button onclick="setTab('groups')" id="nav-groups" class="tab-btn px-3 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 flex items-center gap-1.5">
+        👥 <span>Xếp Nhóm Ngẫu Nhiên</span>
+      </button>
+      <button onclick="setTab('stars')" id="nav-stars" class="tab-btn px-3 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 flex items-center gap-1.5">
+        ⭐ <span>Bảng Điểm Khen Thưởng</span>
+      </button>
+      <button onclick="setTab('shop')" id="nav-shop" class="tab-btn px-3 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 flex items-center gap-1.5">
+        🎁 <span>Star Shop Đổi Quà</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 flex-1 w-full">
+
+    <!-- ============================================== -->
+    <!-- TAB 1: RANDOM PICKER (5 FORMATS) -->
+    <!-- ============================================== -->
+    <section id="tab-picker" class="space-y-6">
+      <!-- Title & Format Selector -->
+      <div class="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <span class="text-[11px] font-black uppercase text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-full">
+            Dành Cho Giáo Viên Tiếng Anh
+          </span>
+          <h2 class="text-xl font-black text-slate-900 mt-1">
+            Gọi Tên Học Sinh Ngẫu Nhiên
+          </h2>
+          <p class="text-xs text-slate-500 mt-0.5">
+            5 hình thức: Bánh Xe May Mắn, Rút Thẻ Bài, Cặp Đôi Đối Thoại, Cuộn Tốc Độ & Quét Camera Radar.
+          </p>
+        </div>
+
+        <!-- Format Buttons -->
+        <div class="p-1 bg-slate-100 rounded-2xl flex flex-wrap gap-1">
+          <button onclick="setPickerMode('wheel')" id="mode-wheel" class="picker-mode-btn px-3 py-2 rounded-xl text-xs font-bold bg-white text-emerald-900 shadow-xs">
+            🎡 Bánh Xe
+          </button>
+          <button onclick="setPickerMode('cards')" id="mode-cards" class="picker-mode-btn px-3 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900">
+            🃏 Thẻ Bài
+          </button>
+          <button onclick="setPickerMode('pairs')" id="mode-pairs" class="picker-mode-btn px-3 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900">
+            👥 Cặp Đôi
+          </button>
+          <button onclick="setPickerMode('roll')" id="mode-roll" class="picker-mode-btn px-3 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900">
+            ⚡ Cuộn Số
+          </button>
+          <button onclick="setPickerMode('camera')" id="mode-camera" class="picker-mode-btn px-3 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 relative">
+            📷 Quét Camera <span class="text-[9px] bg-rose-500 text-white font-black px-1.5 py-0.2 rounded-full ml-1">MỚI</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- PICKER DISPLAY ARENA -->
+      <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col items-center justify-center min-h-[420px] relative overflow-hidden">
+        
+        <!-- 1. WHEEL CANVAS -->
+        <div id="view-wheel" class="flex flex-col items-center">
+          <div class="relative w-[340px] h-[340px] sm:w-[380px] sm:h-[380px]">
+            <!-- Pointer -->
+            <div class="absolute -top-3 left-1/2 -translate-x-1/2 z-20 w-0 h-0 border-l-[14px] border-l-transparent border-r-[14px] border-r-transparent border-t-[28px] border-t-rose-600 drop-shadow-md"></div>
+            <!-- Canvas -->
+            <canvas id="wheelCanvas" width="380" height="380" class="w-full h-full rounded-full shadow-lg border-4 border-emerald-700"></canvas>
+            <!-- Center Hub -->
+            <div onclick="spinWheel()" class="absolute inset-0 m-auto w-20 h-20 rounded-full bg-gradient-to-tr from-amber-400 to-amber-200 text-amber-950 font-black text-xs flex flex-col items-center justify-center shadow-lg border-2 border-white cursor-pointer hover:scale-105 active:scale-95 transition-all select-none z-10">
+              <span class="text-base">🎯</span>
+              <span>QUAY</span>
+            </div>
+          </div>
+          <button onclick="spinWheel()" id="btnSpinWheel" class="mt-5 px-8 py-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-black text-sm shadow-md transition-all active:scale-95 cursor-pointer">
+            ✨ Quay Ngẫu Nhiên
+          </button>
+        </div>
+
+        <!-- 2. MYSTERY CARDS -->
+        <div id="view-cards" class="hidden w-full max-w-3xl flex flex-col items-center">
+          <p class="text-xs text-slate-500 mb-4">Bấm chọn 1 thẻ bài bất kỳ bên dưới để hé lộ tên học sinh lên bảng:</p>
+          <div id="cardsGrid" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3 w-full"></div>
+        </div>
+
+        <!-- 3. DIALOGUE PAIRS -->
+        <div id="view-pairs" class="hidden w-full max-w-xl flex flex-col items-center text-center">
+          <span class="text-xs text-purple-700 font-bold bg-purple-100 px-3 py-1 rounded-full mb-3">
+            Pair Work / Role-Play Speaking
+          </span>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
+            <div class="p-5 rounded-2xl bg-blue-50 border-2 border-blue-300 flex flex-col items-center">
+              <span class="text-xs font-bold text-blue-700 uppercase">Student A (Speaker 1)</span>
+              <div id="pairStudentA" class="text-lg font-black text-slate-900 mt-2">Chưa chọn</div>
+              <span class="text-xs text-blue-600 mt-1" id="pairStudentARole">Hỏi câu hỏi / Khởi xướng</span>
+            </div>
+            <div class="p-5 rounded-2xl bg-rose-50 border-2 border-rose-300 flex flex-col items-center">
+              <span class="text-xs font-bold text-rose-700 uppercase">Student B (Speaker 2)</span>
+              <div id="pairStudentB" class="text-lg font-black text-slate-900 mt-2">Chưa chọn</div>
+              <span class="text-xs text-rose-600 mt-1" id="pairStudentBRole">Trả lời / Phản hồi đối thoại</span>
+            </div>
+          </div>
+          <button onclick="pickPair()" class="mt-5 px-8 py-3 rounded-2xl bg-purple-700 hover:bg-purple-600 text-white font-black text-sm shadow-md transition-all active:scale-95 cursor-pointer">
+            👥 Chọn Cặp Đôi Ngẫu Nhiên
+          </button>
+        </div>
+
+        <!-- 4. SPEED ROLL -->
+        <div id="view-roll" class="hidden flex flex-col items-center text-center">
+          <div class="w-80 h-36 rounded-3xl bg-slate-950 text-white flex flex-col items-center justify-center p-4 border-4 border-amber-400 shadow-xl">
+            <span class="text-[10px] font-mono text-amber-400 uppercase tracking-widest">Học Sinh Được Gọi</span>
+            <div id="rollNameDisplay" class="text-2xl font-black text-white mt-1 font-mono tracking-tight">--- SẴN SÀNG ---</div>
+            <div id="rollStarDisplay" class="text-xs text-amber-300 mt-1">⭐ Bấm để cuộn tốc độ</div>
+          </div>
+          <button onclick="startSpeedRoll()" id="btnSpeedRoll" class="mt-5 px-8 py-3 rounded-2xl bg-amber-600 hover:bg-amber-500 text-white font-black text-sm shadow-md transition-all active:scale-95 cursor-pointer">
+            ⚡ Bắt Đầu Cuộn
+          </button>
+        </div>
+
+        <!-- 5. CAMERA RADAR SCANNER -->
+        <div id="view-camera" class="hidden w-full max-w-2xl flex flex-col items-center">
+          <!-- Permission Onboarding View -->
+          <div id="camPermView" class="w-full p-6 rounded-3xl bg-slate-900 text-white flex flex-col items-center text-center space-y-4 border border-slate-700">
+            <div class="w-16 h-16 rounded-2xl bg-emerald-500/20 border border-emerald-400/40 text-emerald-400 flex items-center justify-center text-3xl shadow-inner">
+              📷
+            </div>
+            <div>
+              <span class="text-[10px] font-black uppercase text-emerald-400 bg-emerald-950 px-3 py-1 rounded-full border border-emerald-700">
+                Quyền Truy Cập Camera
+              </span>
+              <h3 class="text-lg font-black text-white mt-2">
+                Cấp Quyền Camera Để Quét Gọi Tên Học Sinh
+              </h3>
+              <p class="text-xs text-slate-300 mt-1 max-w-md mx-auto leading-relaxed">
+                Giáo viên hướng camera về phía lớp học hoặc thẻ học sinh để hệ thống tự động quét và khóa mục tiêu ngẫu nhiên. Dữ liệu chỉ xử lý tại chỗ trên máy, bảo mật 100%.
+              </p>
+            </div>
+            <div class="flex flex-wrap gap-2 justify-center pt-2">
+              <button onclick="requestCameraAccess()" class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-2 shadow-md cursor-pointer">
+                ✅ Cho Phép & Bật Camera Thật
+              </button>
+              <button onclick="startSimulatedCamera()" class="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600 font-bold text-xs flex items-center gap-2 cursor-pointer">
+                🖥️ Dùng Radar Mô Phỏng (Không cần webcam)
+              </button>
+            </div>
+          </div>
+
+          <!-- Live Camera Viewfinder -->
+          <div id="camActiveView" class="hidden w-full flex flex-col items-center">
+            <div class="relative w-full h-80 rounded-3xl overflow-hidden bg-black border-2 border-emerald-500 shadow-2xl flex items-center justify-center">
+              <video id="liveVideo" autoplay playsinline muted class="w-full h-full object-cover"></video>
+              <canvas id="liveCanvas" class="hidden"></canvas>
+              
+              <!-- Radar Overlay -->
+              <div id="radarOverlay" class="absolute inset-0 pointer-events-none hidden">
+                <div class="w-full h-full radar-sweep"></div>
+                <div class="absolute inset-0 flex items-center justify-center">
+                  <div class="w-48 h-48 rounded-full border border-emerald-400/40 border-dashed animate-pulse"></div>
+                  <div class="absolute w-28 h-28 rounded-full border border-emerald-400/60"></div>
+                  <div class="absolute w-2 h-2 rounded-full bg-emerald-400"></div>
+                </div>
+              </div>
+
+              <!-- HUD Target Box -->
+              <div id="hudBox" class="absolute hidden w-56 p-3 rounded-2xl bg-emerald-950/80 border-2 border-emerald-400 hud-box text-center text-white backdrop-blur-xs">
+                <span class="text-[9px] font-mono text-emerald-300 uppercase tracking-widest">TARGET LOCKED</span>
+                <div id="hudStudentName" class="text-base font-black text-white mt-0.5">Nguyễn Văn A</div>
+                <div id="hudStudentStars" class="text-xs text-amber-300 font-bold mt-0.5">⭐ 12 sao</div>
+              </div>
+
+              <!-- Camera Controls Overlay -->
+              <div class="absolute bottom-3 inset-x-3 flex items-center justify-between text-xs text-white">
+                <span id="camStatusBadge" class="bg-black/60 px-2.5 py-1 rounded-lg font-mono text-[11px] text-emerald-300">
+                  ● Camera Đang Bật
+                </span>
+                <button onclick="stopCamera()" class="px-3 py-1 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold cursor-pointer">
+                  Tắt Camera
+                </button>
+              </div>
+            </div>
+
+            <button onclick="triggerRadarScan()" id="btnRadarScan" class="mt-4 px-8 py-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-black text-sm shadow-md transition-all active:scale-95 cursor-pointer">
+              📡 Quét Radar Khóa Học Sinh Ngẫu Nhiên
+            </button>
+          </div>
+        </div>
+
+        <!-- SELECTED STUDENT ACTION BAR -->
+        <div id="selectedStudentBar" class="hidden w-full max-w-xl mt-6 p-4 rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50 to-amber-50 border-2 border-emerald-300 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-sm animate-in fade-in">
+          <div class="flex items-center gap-3">
+            <div id="selectedAvatar" class="w-12 h-12 rounded-2xl bg-emerald-600 text-white text-xl font-black flex items-center justify-center shadow-xs">
+              A
+            </div>
+            <div>
+              <span class="text-[10px] font-black uppercase text-emerald-800 bg-emerald-200/70 px-2 py-0.5 rounded-full">
+                Học Sinh Vừa Được Gọi
+              </span>
+              <h4 id="selectedName" class="text-base font-black text-slate-900 mt-0.5">
+                Nguyễn Văn A
+              </h4>
+              <p id="selectedStars" class="text-xs text-slate-600">
+                ⭐ Hiện có: <strong class="text-emerald-700 font-black">10 sao</strong>
+              </p>
+            </div>
+          </div>
+
+          <!-- Quick Star Award Buttons -->
+          <div class="flex items-center gap-1.5 flex-wrap justify-end">
+            <button onclick="awardStarsToSelected(1)" class="px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-xs cursor-pointer">
+              +1 ⭐ Phát biểu
+            </button>
+            <button onclick="awardStarsToSelected(2)" class="px-2.5 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-xs cursor-pointer">
+              +2 ⭐ Tương tác
+            </button>
+            <button onclick="awardStarsToSelected(5)" class="px-2.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-white font-black text-xs shadow-xs cursor-pointer">
+              +5 ⭐ Xuất sắc
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ============================================== -->
+    <!-- TAB 2: RANDOM GROUP GENERATOR -->
+    <!-- ============================================== -->
+    <section id="tab-groups" class="hidden space-y-6">
+      <div class="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <span class="text-[11px] font-black uppercase text-purple-700 bg-purple-100 px-2.5 py-0.5 rounded-full">
+            Hoạt Động Thảo Luận Nhóm (Group Work)
+          </span>
+          <h2 class="text-xl font-black text-slate-900 mt-1">
+            Xếp Nhóm Ngẫu Nhiên Cho Học Sinh
+          </h2>
+          <p class="text-xs text-slate-500 mt-0.5">
+            Chỉ cần nhập số lượng học sinh trong 1 nhóm, hệ thống sẽ tự động tính số nhóm và chia ngẫu nhiên đều đặn.
+          </p>
+        </div>
+
+        <!-- Input config -->
+        <div class="flex items-center gap-2 bg-slate-100 p-2 rounded-2xl border border-slate-200">
+          <label class="text-xs font-bold text-slate-700">Số HS / 1 nhóm:</label>
+          <input type="number" id="groupSizeInput" min="2" max="15" value="4" class="w-16 px-2.5 py-1.5 rounded-xl bg-white border border-slate-300 font-bold text-center text-sm outline-none focus:border-purple-600">
+          <button onclick="generateGroups()" class="px-4 py-2 rounded-xl bg-purple-700 hover:bg-purple-600 text-white font-black text-xs shadow-xs transition-all cursor-pointer">
+            🎲 Xếp Nhóm Ngay
+          </button>
+        </div>
+      </div>
+
+      <!-- Groups Result Container -->
+      <div id="groupsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <!-- Rendered dynamically -->
+      </div>
+    </section>
+
+    <!-- ============================================== -->
+    <!-- TAB 3: STAR LEADERBOARD & REWARDS -->
+    <!-- ============================================== -->
+    <section id="tab-stars" class="hidden space-y-6">
+      <div class="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <span class="text-[11px] font-black uppercase text-amber-700 bg-amber-100 px-2.5 py-0.5 rounded-full">
+            Bảng Vàng Thi Đua Lớp Học
+          </span>
+          <h2 class="text-xl font-black text-slate-900 mt-1">
+            Danh Sách & Điểm Sao Khen Thưởng
+          </h2>
+          <p class="text-xs text-slate-500 mt-0.5">
+            Cộng hoặc trừ sao nhanh cho từng học sinh. Dữ liệu được lưu trữ tự động trên trình duyệt.
+          </p>
+        </div>
+
+        <div class="flex items-center gap-2 flex-wrap">
+          <input type="text" id="searchStudentInput" oninput="renderLeaderboard()" placeholder="Tìm kiếm tên học sinh..." class="px-3 py-2 rounded-xl bg-slate-100 border border-slate-200 text-xs font-medium outline-none">
+          <button onclick="resetAllStarsOffline()" class="px-3.5 py-2 rounded-xl bg-rose-100 hover:bg-rose-200 text-rose-950 font-bold text-xs flex items-center gap-1.5 border border-rose-300 cursor-pointer shadow-xs" title="Đặt lại điểm sao học sinh về 0 sao">
+            🔄 Đặt Về 0 Sao
+          </button>
+          <button onclick="exportCSV()" class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs cursor-pointer">
+            📊 Xuất Excel (CSV)
+          </button>
+        </div>
+      </div>
+
+      <!-- Leaderboard Table -->
+      <div class="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-slate-100 text-[11px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">
+                <th class="py-3 px-4">Hạng</th>
+                <th class="py-3 px-4">Học Sinh</th>
+                <th class="py-3 px-4">Lớp</th>
+                <th class="py-3 px-4 text-center">Sao Hiện Có</th>
+                <th class="py-3 px-4 text-right">Thao Tác Thưởng / Trừ</th>
+              </tr>
+            </thead>
+            <tbody id="leaderboardTbody" class="divide-y divide-slate-100 text-xs">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================== -->
+    <!-- TAB 4: STAR SHOP (ĐỔI QUÀ) -->
+    <!-- ============================================== -->
+    <section id="tab-shop" class="hidden space-y-6">
+      <div class="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm">
+        <span class="text-[11px] font-black uppercase text-amber-700 bg-amber-100 px-2.5 py-0.5 rounded-full">
+          Góc Khen Thưởng Đổi Quà
+        </span>
+        <h2 class="text-xl font-black text-slate-900 mt-1">
+          Cửa Hàng Quà Tặng Engstar
+        </h2>
+        <p class="text-xs text-slate-500 mt-0.5">
+          Học sinh tích lũy sao qua các tiết học để đổi các phần quà học tập và quyền lợi học tập hấp dẫn.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- Item 1 -->
+        <div class="p-5 rounded-3xl bg-white border border-slate-200 shadow-sm flex flex-col justify-between">
+          <div>
+            <div class="w-12 h-12 rounded-2xl bg-amber-100 text-2xl flex items-center justify-center">✏️</div>
+            <h4 class="font-bold text-sm text-slate-900 mt-3">Bút Bi Nước Cao Cấp</h4>
+            <p class="text-xs text-slate-500 mt-1">Bút gel viết bài êm tay, mực tím hoặc đen.</p>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+            <span class="font-black text-amber-600 text-sm">⭐ 10 Sao</span>
+            <span class="text-[10px] text-slate-400">Còn 25 phần</span>
+          </div>
+        </div>
+
+        <!-- Item 2 -->
+        <div class="p-5 rounded-3xl bg-white border border-slate-200 shadow-sm flex flex-col justify-between">
+          <div>
+            <div class="w-12 h-12 rounded-2xl bg-emerald-100 text-2xl flex items-center justify-center">📓</div>
+            <h4 class="font-bold text-sm text-slate-900 mt-3">Sổ Tay Từ Vựng A5</h4>
+            <p class="text-xs text-slate-500 mt-1">Sổ kẻ ngang ghi chú Vocabulary & Idioms.</p>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+            <span class="font-black text-amber-600 text-sm">⭐ 25 Sao</span>
+            <span class="text-[10px] text-slate-400">Còn 15 phần</span>
+          </div>
+        </div>
+
+        <!-- Item 3 -->
+        <div class="p-5 rounded-3xl bg-white border border-slate-200 shadow-sm flex flex-col justify-between">
+          <div>
+            <div class="w-12 h-12 rounded-2xl bg-purple-100 text-2xl flex items-center justify-center">🎟️</div>
+            <h4 class="font-bold text-sm text-slate-900 mt-3">Vé Miễn Kiểm Tra Bài Cũ</h4>
+            <p class="text-xs text-slate-500 mt-1">Sử dụng 1 lần đầu giờ khi được gọi lên bảng.</p>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+            <span class="font-black text-amber-600 text-sm">⭐ 35 Sao</span>
+            <span class="text-[10px] text-slate-400">Đặc quyền GV</span>
+          </div>
+        </div>
+
+        <!-- Item 4 -->
+        <div class="p-5 rounded-3xl bg-white border border-slate-200 shadow-sm flex flex-col justify-between">
+          <div>
+            <div class="w-12 h-12 rounded-2xl bg-rose-100 text-2xl flex items-center justify-center">💯</div>
+            <h4 class="font-bold text-sm text-slate-900 mt-3">Voucher Cộng +1 Điểm 15P</h4>
+            <p class="text-xs text-slate-500 mt-1">Cộng 1 điểm vào bài kiểm tra 15 phút gần nhất.</p>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+            <span class="font-black text-amber-600 text-sm">⭐ 50 Sao</span>
+            <span class="text-[10px] text-slate-400">Đặc quyền GV</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="bg-white border-t border-slate-200 py-6 text-center text-xs text-slate-500">
+    <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+      <div class="flex items-center gap-2">
+        <span class="font-black text-emerald-800">Engstar</span>
+        <span>· Trường THPT Đạ Tông (Đạ Tông, Đam Rông, Lâm Đồng)</span>
+      </div>
+      <div>Phục vụ hoạt động Dạy & Học Tiếng Anh · Bản chạy Offline & Trình chiếu</div>
+    </div>
+  </footer>
+
+  <!-- SCRIPT LOGIC -->
+  <script>
+    // --- SAMPLE DATA FOR THPT ĐẠ TÔNG ---
+    const DEFAULT_STUDENTS = {
+      '10A1': [
+        { id: 'std_01', name: 'Nguyễn Hoàng An', stars: 18 },
+        { id: 'std_02', name: 'Trần Thị Mai Anh', stars: 24 },
+        { id: 'std_03', name: 'Lê Minh Bảo', stars: 15 },
+        { id: 'std_04', name: 'Phạm Ngọc Châu', stars: 32 },
+        { id: 'std_05', name: 'Đỗ Tuấn Dũng', stars: 12 },
+        { id: 'std_06', name: 'Vũ Thùy Dương', stars: 20 },
+        { id: 'std_07', name: 'Hoàng Quốc Đạt', stars: 16 },
+        { id: 'std_08', name: 'Bùi Phương Hà', stars: 28 },
+        { id: 'std_09', name: 'Ngô Gia Huy', stars: 14 },
+        { id: 'std_10', name: 'Đặng Mai Khôi', stars: 22 },
+        { id: 'std_11', name: 'Lý Thanh Lan', stars: 19 },
+        { id: 'std_12', name: 'Võ Đức Long', stars: 11 },
+        { id: 'std_13', name: 'Dương Khánh Linh', stars: 26 },
+        { id: 'std_14', name: 'Lương Bảo Nam', stars: 17 },
+        { id: 'std_15', name: 'Hồ Yến Nhi', stars: 30 },
+        { id: 'std_16', name: 'Phan Trọng Nhân', stars: 13 }
+      ],
+      '10A2': [
+        { id: 'std_17', name: 'K’Bảo', stars: 25 },
+        { id: 'std_18', name: 'K’Duy', stars: 19 },
+        { id: 'std_19', name: 'Liêng Hót Ka Linh', stars: 27 },
+        { id: 'std_20', name: 'Đa Cát Ka Thảo', stars: 22 },
+        { id: 'std_21', name: 'K’Thành', stars: 16 },
+        { id: 'std_22', name: 'Nguyễn Thúy Vy', stars: 29 },
+        { id: 'std_23', name: 'Trần Văn Hưng', stars: 14 },
+        { id: 'std_24', name: 'Lê Thị Diệu', stars: 20 }
+      ],
+      '12A3': [
+        { id: 'std_25', name: 'Phạm Đăng Khoa', stars: 45 },
+        { id: 'std_26', name: 'Vũ Quỳnh Như', stars: 42 },
+        { id: 'std_27', name: 'Nguyễn Tấn Phát', stars: 38 },
+        { id: 'std_28', name: 'Lê Hoàng Yến', stars: 36 }
+      ],
+      '12A5': [
+        { id: 'std_29', name: 'Đỗ Minh Trí', stars: 33 },
+        { id: 'std_30', name: 'Hoàng Mỹ Duyên', stars: 39 },
+        { id: 'std_31', name: 'Trịnh Công Sơn', stars: 28 }
+      ]
+    };
+
+    // Đặt toàn bộ điểm sao ban đầu về 0 sao theo yêu cầu
+    Object.keys(DEFAULT_STUDENTS).forEach(cls => {
+      DEFAULT_STUDENTS[cls].forEach(st => st.stars = 0);
+    });
+
+    // Load from LocalStorage if exists
+    let currentClass = '10A1';
+    let stored = localStorage.getItem('engstar_students');
+    let studentsData = DEFAULT_STUDENTS;
+    if (stored) {
+      try {
+        studentsData = JSON.parse(stored);
+        if (!localStorage.getItem('engstar_stars_reset_zero_v3')) {
+          Object.keys(studentsData).forEach(cls => {
+            studentsData[cls].forEach(st => st.stars = 0);
+          });
+          localStorage.setItem('engstar_students', JSON.stringify(studentsData));
+          localStorage.setItem('engstar_stars_reset_zero_v3', 'true');
+        }
+      } catch (e) {
+        studentsData = DEFAULT_STUDENTS;
+      }
+    } else {
+      localStorage.setItem('engstar_stars_reset_zero_v3', 'true');
+    }
+
+    let selectedStudent = null;
+    let cameraStream = null;
+
+    function saveStudents() {
+      localStorage.setItem('engstar_students', JSON.stringify(studentsData));
+    }
+
+    // --- AUDIO SYNTHESIZER ---
+    function playBeep(freq = 440, type = 'sine', duration = 0.1) {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = type;
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.15, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + duration);
+      } catch (e) {}
+    }
+
+    function playFanfare() {
+      try {
+        playBeep(523.25, 'triangle', 0.15); // C5
+        setTimeout(() => playBeep(659.25, 'triangle', 0.15), 120); // E5
+        setTimeout(() => playBeep(783.99, 'triangle', 0.25), 240); // G5
+        setTimeout(() => playBeep(1046.50, 'triangle', 0.4), 380); // C6
+      } catch (e) {}
+    }
+
+    // --- TAB SWITCHER ---
+    function setTab(tabId) {
+      document.querySelectorAll('main > section').forEach(s => s.classList.add('hidden'));
+      document.getElementById('tab-' + tabId).classList.remove('hidden');
+
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('bg-emerald-600', 'text-white', 'shadow-xs');
+        btn.classList.add('text-slate-600', 'hover:bg-slate-100');
+      });
+      const activeBtn = document.getElementById('nav-' + tabId);
+      activeBtn.classList.remove('text-slate-600', 'hover:bg-slate-100');
+      activeBtn.classList.add('bg-emerald-600', 'text-white', 'shadow-xs');
+
+      if (tabId === 'picker') drawWheel();
+      if (tabId === 'groups') generateGroups();
+      if (tabId === 'stars') renderLeaderboard();
+    }
+
+    // --- CLASS SWITCHER ---
+    function switchClass(newClass) {
+      currentClass = newClass;
+      drawWheel();
+      generateGroups();
+      renderLeaderboard();
+      renderCards();
+      selectedStudent = null;
+      document.getElementById('selectedStudentBar').classList.add('hidden');
+    }
+
+    // --- PICKER MODE SWITCHER ---
+    function setPickerMode(mode) {
+      ['wheel', 'cards', 'pairs', 'roll', 'camera'].forEach(m => {
+        document.getElementById('view-' + m).classList.add('hidden');
+        const b = document.getElementById('mode-' + m);
+        b.classList.remove('bg-white', 'text-emerald-900', 'shadow-xs', 'font-bold');
+        b.classList.add('text-slate-600');
+      });
+
+      document.getElementById('view-' + mode).classList.remove('hidden');
+      const activeB = document.getElementById('mode-' + mode);
+      activeB.classList.add('bg-white', 'text-emerald-900', 'shadow-xs', 'font-bold');
+      activeB.classList.remove('text-slate-600');
+
+      if (mode === 'wheel') drawWheel();
+      if (mode === 'cards') renderCards();
+    }
+
+    // ==========================================
+    // 1. WHEEL IMPLEMENTATION
+    // ==========================================
+    let wheelAngle = 0;
+    let isSpinning = false;
+    const colors = ['#A8E6CF', '#DCEDC1', '#FFD3B6', '#FFAAA5', '#FF8B94', '#DED2F9', '#FFEAA7'];
+
+    function drawWheel() {
+      const canvas = document.getElementById('wheelCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const students = studentsData[currentClass] || [];
+      const len = students.length;
+      if (len === 0) return;
+
+      const arc = (2 * Math.PI) / len;
+      const radius = canvas.width / 2;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      ctx.save();
+      ctx.translate(radius, radius);
+      ctx.rotate(wheelAngle);
+
+      for (let i = 0; i < len; i++) {
+        const start = i * arc;
+        const end = start + arc;
+
+        ctx.beginPath();
+        ctx.fillStyle = colors[i % colors.length];
+        ctx.moveTo(0, 0);
+        ctx.arc(0, 0, radius - 6, start, end);
+        ctx.fill();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#FFFFFF';
+        ctx.stroke();
+
+        // Draw student name
+        ctx.save();
+        ctx.rotate(start + arc / 2);
+        ctx.textAlign = 'right';
+        ctx.fillStyle = '#0F172A';
+        ctx.font = 'bold 12px "Plus Jakarta Sans"';
+        const nameParts = students[i].name.split(' ');
+        const shortName = nameParts.length > 2 ? nameParts.slice(-2).join(' ') : students[i].name;
+        ctx.fillText(shortName, radius - 20, 4);
+        ctx.restore();
+      }
+
+      ctx.restore();
+    }
+
+    function spinWheel() {
+      if (isSpinning) return;
+      const students = studentsData[currentClass] || [];
+      if (students.length === 0) return;
+
+      isSpinning = true;
+      const targetIndex = Math.floor(Math.random() * students.length);
+      const arc = (2 * Math.PI) / students.length;
+      
+      // Calculate target angle (pointer is at top: 3*PI/2)
+      const targetSliceCenter = targetIndex * arc + arc / 2;
+      const fullRotations = (5 + Math.floor(Math.random() * 3)) * 2 * Math.PI;
+      const finalAngle = fullRotations + ( (3 * Math.PI / 2) - targetSliceCenter );
+
+      const startAngle = wheelAngle % (2 * Math.PI);
+      const diff = finalAngle - startAngle;
+      const duration = 4000;
+      const startTime = performance.now();
+
+      function animate(now) {
+        const elapsed = now - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        // Ease out cubic
+        const ease = 1 - Math.pow(1 - progress, 3);
+        wheelAngle = startAngle + diff * ease;
+        drawWheel();
+
+        if (Math.floor(elapsed / 150) % 2 === 0) {
+          playBeep(600, 'sine', 0.03);
+        }
+
+        if (progress < 1) {
+          requestAnimationFrame(animate);
+        } else {
+          isSpinning = false;
+          onStudentSelected(students[targetIndex]);
+        }
+      }
+
+      requestAnimationFrame(animate);
+    }
+
+    // ==========================================
+    // 2. CARDS IMPLEMENTATION
+    // ==========================================
+    function renderCards() {
+      const container = document.getElementById('cardsGrid');
+      const students = [...(studentsData[currentClass] || [])].sort(() => Math.random() - 0.5);
+      container.innerHTML = '';
+
+      students.forEach((st, idx) => {
+        const card = document.createElement('div');
+        card.className = 'h-24 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-800 text-white font-black text-xs flex flex-col items-center justify-center p-2 shadow-md cursor-pointer hover:-translate-y-1 transition-all select-none border-2 border-white/40';
+        card.innerHTML = `<span class="text-xl">🎴</span><span class="mt-1">Thẻ #${idx + 1}</span>`;
+        card.onclick = () => {
+          card.className = 'h-24 rounded-2xl bg-amber-400 text-amber-950 font-black text-xs flex flex-col items-center justify-center p-2 shadow-lg border-2 border-amber-600 animate-bounce';
+          card.innerHTML = `<span class="text-xs text-amber-800">★ #${idx + 1}</span><span class="mt-1 text-center font-black">${st.name}</span>`;
+          onStudentSelected(st);
+        };
+        container.appendChild(card);
+      });
+    }
+
+    // ==========================================
+    // 3. PAIRS IMPLEMENTATION
+    // ==========================================
+    function pickPair() {
+      const students = studentsData[currentClass] || [];
+      if (students.length < 2) return;
+      const shuffled = [...students].sort(() => Math.random() - 0.5);
+      const a = shuffled[0];
+      const b = shuffled[1];
+
+      document.getElementById('pairStudentA').innerText = a.name;
+      document.getElementById('pairStudentB').innerText = b.name;
+      playFanfare();
+      if (typeof confetti === 'function') confetti({ particleCount: 50, spread: 60 });
+    }
+
+    // ==========================================
+    // 4. SPEED ROLL IMPLEMENTATION
+    // ==========================================
+    function startSpeedRoll() {
+      const students = studentsData[currentClass] || [];
+      if (students.length === 0) return;
+      const display = document.getElementById('rollNameDisplay');
+      const starDisplay = document.getElementById('rollStarDisplay');
+      let count = 0;
+      const maxCount = 25;
+
+      const interval = setInterval(() => {
+        const rand = students[Math.floor(Math.random() * students.length)];
+        display.innerText = rand.name;
+        starDisplay.innerText = `⭐ ${rand.stars} sao`;
+        playBeep(500 + count * 20, 'sine', 0.05);
+        count++;
+
+        if (count >= maxCount) {
+          clearInterval(interval);
+          const finalStudent = students[Math.floor(Math.random() * students.length)];
+          display.innerText = finalStudent.name;
+          starDisplay.innerText = `⭐ ${finalStudent.stars} sao`;
+          onStudentSelected(finalStudent);
+        }
+      }, 80);
+    }
+
+    // ==========================================
+    // 5. CAMERA & RADAR IMPLEMENTATION
+    // ==========================================
+    function requestCameraAccess() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert('Trình duyệt không hỗ trợ Camera. Đang chuyển sang Radar mô phỏng.');
+        startSimulatedCamera();
+        return;
+      }
+
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+        .then(stream => {
+          cameraStream = stream;
+          document.getElementById('camPermView').classList.add('hidden');
+          document.getElementById('camActiveView').classList.remove('hidden');
+          const video = document.getElementById('liveVideo');
+          video.srcObject = stream;
+          document.getElementById('camStatusBadge').innerText = '● Camera Thực Đang Quét';
+          playFanfare();
+        })
+        .catch(err => {
+          alert('Không thể kết nối camera hoặc đã bị từ chối quyền (' + err.message + '). Chuyển sang chế độ radar mô phỏng!');
+          startSimulatedCamera();
+        });
+    }
+
+    function startSimulatedCamera() {
+      document.getElementById('camPermView').classList.add('hidden');
+      document.getElementById('camActiveView').classList.remove('hidden');
+      const video = document.getElementById('liveVideo');
+      video.style.background = 'linear-gradient(135deg, #022c22, #064e3b, #0f172a)';
+      document.getElementById('camStatusBadge').innerText = '● Radar Lớp Học (Mô Phỏng)';
+      playFanfare();
+    }
+
+    function stopCamera() {
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(t => t.stop());
+        cameraStream = null;
+      }
+      document.getElementById('camActiveView').classList.add('hidden');
+      document.getElementById('camPermView').classList.remove('hidden');
+      document.getElementById('radarOverlay').classList.add('hidden');
+      document.getElementById('hudBox').classList.add('hidden');
+    }
+
+    function triggerRadarScan() {
+      const students = studentsData[currentClass] || [];
+      if (students.length === 0) return;
+
+      const overlay = document.getElementById('radarOverlay');
+      const hud = document.getElementById('hudBox');
+      overlay.classList.remove('hidden');
+      hud.classList.add('hidden');
+
+      let pingCount = 0;
+      const pingInterval = setInterval(() => {
+        playBeep(700 + pingCount * 80, 'sine', 0.08);
+        pingCount++;
+      }, 250);
+
+      setTimeout(() => {
+        clearInterval(pingInterval);
+        overlay.classList.add('hidden');
+        const picked = students[Math.floor(Math.random() * students.length)];
+        
+        hud.classList.remove('hidden');
+        document.getElementById('hudStudentName').innerText = picked.name;
+        document.getElementById('hudStudentStars').innerText = `⭐ ${picked.stars} sao`;
+        onStudentSelected(picked);
+      }, 2200);
+    }
+
+    // ==========================================
+    // ACTION BAR & STUDENT SELECTION
+    // ==========================================
+    function onStudentSelected(student) {
+      selectedStudent = student;
+      const bar = document.getElementById('selectedStudentBar');
+      bar.classList.remove('hidden');
+      
+      const initials = student.name.split(' ').map(w => w[0]).join('').slice(-2).toUpperCase();
+      document.getElementById('selectedAvatar').innerText = initials;
+      document.getElementById('selectedName').innerText = student.name;
+      document.getElementById('selectedStars').innerHTML = `⭐ Hiện có: <strong class="text-emerald-700 font-black">${student.stars} sao</strong>`;
+
+      playFanfare();
+      if (typeof confetti === 'function') confetti({ particleCount: 70, spread: 70, origin: { y: 0.7 } });
+    }
+
+    function awardStarsToSelected(amount) {
+      if (!selectedStudent) return;
+      selectedStudent.stars += amount;
+      saveStudents();
+      renderLeaderboard();
+      document.getElementById('selectedStars').innerHTML = `⭐ Hiện có: <strong class="text-emerald-700 font-black">${selectedStudent.stars} sao</strong> (+${amount}⭐)`;
+      playBeep(880, 'triangle', 0.2);
+      if (typeof confetti === 'function') confetti({ particleCount: 40, spread: 50 });
+    }
+
+    // ==========================================
+    // GROUP GENERATOR (NHẬP SỐ LƯỢNG HS / NHÓM)
+    // ==========================================
+    function generateGroups() {
+      const groupSize = parseInt(document.getElementById('groupSizeInput').value, 10) || 4;
+      const students = [...(studentsData[currentClass] || [])].sort(() => Math.random() - 0.5);
+      const totalStudents = students.length;
+      if (totalStudents === 0) return;
+
+      const numGroups = Math.ceil(totalStudents / groupSize);
+      const groups = Array.from({ length: numGroups }, () => []);
+
+      students.forEach((st, idx) => {
+        groups[idx % numGroups].push(st);
+      });
+
+      const container = document.getElementById('groupsContainer');
+      container.innerHTML = '';
+
+      const groupNames = ['Eagle', 'Tiger', 'Phoenix', 'Falcon', 'Dragon', 'Lion', 'Dolphin', 'Panda'];
+
+      groups.forEach((grp, idx) => {
+        const teamName = groupNames[idx % groupNames.length] + ' Team';
+        const card = document.createElement('div');
+        card.className = 'p-5 rounded-3xl bg-white border border-slate-200 shadow-sm flex flex-col justify-between';
+        
+        let membersHtml = grp.map((m, mIdx) => `
+          <li class="flex items-center justify-between py-1.5 border-b border-slate-100 last:border-0 text-xs">
+            <span class="font-bold text-slate-800">${mIdx + 1}. ${m.name}</span>
+            <span class="text-[11px] text-amber-600 font-semibold">⭐ ${m.stars}</span>
+          </li>
+        `).join('');
+
+        card.innerHTML = `
+          <div>
+            <div class="flex items-center justify-between">
+              <span class="text-[10px] font-black uppercase text-purple-700 bg-purple-100 px-2.5 py-0.5 rounded-full">
+                Nhóm ${idx + 1}
+              </span>
+              <span class="text-xs font-bold text-slate-500">${grp.length} thành viên</span>
+            </div>
+            <h4 class="text-base font-black text-slate-900 mt-2">${teamName}</h4>
+            <ul class="mt-3 space-y-0.5">${membersHtml}</ul>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+            <span class="text-slate-400 font-mono">Lớp ${currentClass}</span>
+            <button onclick="awardStarsToGroup(${JSON.stringify(grp.map(s => s.id)).replace(/"/g, '&quot;')}, 2)" class="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] cursor-pointer">
+              +2⭐ Cả nhóm
+            </button>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+
+      playFanfare();
+    }
+
+    function awardStarsToGroup(studentIds, stars) {
+      const students = studentsData[currentClass] || [];
+      students.forEach(s => {
+        if (studentIds.includes(s.id)) s.stars += stars;
+      });
+      saveStudents();
+      generateGroups();
+      renderLeaderboard();
+      if (typeof confetti === 'function') confetti({ particleCount: 50, spread: 60 });
+    }
+
+    // ==========================================
+    // LEADERBOARD & CSV
+    // ==========================================
+    function renderLeaderboard() {
+      const tbody = document.getElementById('leaderboardTbody');
+      if (!tbody) return;
+      const search = (document.getElementById('searchStudentInput')?.value || '').toLowerCase().trim();
+      let students = [...(studentsData[currentClass] || [])].sort((a, b) => b.stars - a.stars);
+
+      if (search) {
+        students = students.filter(s => s.name.toLowerCase().includes(search));
+      }
+
+      tbody.innerHTML = '';
+      students.forEach((st, idx) => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-50/80 transition-colors';
+        const rankBadge = idx === 0 ? '🥇 Thủ Lĩnh' : idx === 1 ? '🥈 Top 2' : idx === 2 ? '🥉 Top 3' : `#${idx + 1}`;
+        
+        tr.innerHTML = `
+          <td class="py-3 px-4 font-black ${idx < 3 ? 'text-amber-600' : 'text-slate-400'}">${rankBadge}</td>
+          <td class="py-3 px-4 font-bold text-slate-900">${st.name}</td>
+          <td class="py-3 px-4 text-slate-500 font-mono">${currentClass}</td>
+          <td class="py-3 px-4 text-center font-black text-amber-600 text-sm">⭐ ${st.stars}</td>
+          <td class="py-3 px-4 text-right space-x-1">
+            <button onclick="adjustStar('${st.id}', 1)" class="px-2 py-1 rounded-lg bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold text-xs cursor-pointer">+1⭐</button>
+            <button onclick="adjustStar('${st.id}', -1)" class="px-2 py-1 rounded-lg bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold text-xs cursor-pointer">-1</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function adjustStar(studentId, amount) {
+      const students = studentsData[currentClass] || [];
+      const st = students.find(s => s.id === studentId);
+      if (st) {
+        st.stars = Math.max(0, st.stars + amount);
+        saveStudents();
+        renderLeaderboard();
+        if (amount > 0) playBeep(750, 'triangle', 0.1);
+      }
+    }
+
+    function resetAllStarsOffline() {
+      if (confirm('Cô Trinh có muốn đặt lại điểm sao của tất cả học sinh về 0 ⭐ để bắt đầu chu kỳ thi đua mới không?')) {
+        Object.keys(studentsData).forEach(cls => {
+          studentsData[cls].forEach(st => st.stars = 0);
+        });
+        saveStudents();
+        renderLeaderboard();
+        drawWheel();
+        renderCards();
+        alert('Đã đặt lại điểm sao của toàn bộ học sinh về 0 ⭐ thành công!');
+      }
+    }
+
+    function exportCSV() {
+      const students = [...(studentsData[currentClass] || [])].sort((a, b) => b.stars - a.stars);
+      const csv = '\uFEFFSTT,Họ và tên,Lớp,Sao tích lũy\n' + students.map((s, i) => `${i + 1},"${s.name}",${currentClass},${s.stars}`).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `Bang_Sao_Tieng_Anh_Lop_${currentClass}_THPT_DaTong.csv`;
+      a.click();
+    }
+
+    // ==========================================
+    // STUDENT LOGIN MODAL (OFFLINE)
+    // ==========================================
+    function openStudentLoginModal() {
+      const modal = document.getElementById('offlineStudentLoginModal');
+      if (modal) {
+        modal.classList.remove('hidden');
+        document.getElementById('offlineLoginName').focus();
+      }
+    }
+
+    function closeStudentLoginModal() {
+      const modal = document.getElementById('offlineStudentLoginModal');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    function submitOfflineStudentLogin(e) {
+      if (e) e.preventDefault();
+      const input = document.getElementById('offlineLoginName');
+      const name = (input.value || '').trim();
+      const classId = document.getElementById('offlineLoginClass').value;
+      const device = document.getElementById('offlineLoginDevice').value;
+      const errEl = document.getElementById('offlineLoginError');
+
+      if (!name || name.length < 2) {
+        errEl.innerText = 'Vui lòng điền đầy đủ Họ và tên học sinh (ít nhất 2 ký tự).';
+        errEl.classList.remove('hidden');
+        input.focus();
+        return;
+      }
+
+      errEl.classList.add('hidden');
+
+      // Switch to that class
+      currentClass = classId;
+      document.getElementById('classSelector').value = classId;
+
+      let students = studentsData[classId] || [];
+      let found = students.find(s => s.name.toLowerCase() === name.toLowerCase());
+
+      if (!found) {
+        // Register new
+        found = {
+          id: 'std_' + Date.now(),
+          name: name,
+          stars: 10,
+          gender: 'female'
+        };
+        students.push(found);
+      }
+
+      // Add 1 star for attendance check-in
+      found.stars += 1;
+      saveStudents();
+      renderLeaderboard();
+      drawWheel();
+      renderCards();
+
+      closeStudentLoginModal();
+      playFanfare();
+      if (typeof confetti === 'function') confetti({ particleCount: 70, spread: 80 });
+
+      alert(`🎉 Chào mừng ${found.name} (Lớp ${classId})!\nBạn đã đăng nhập thành công qua ${device} và nhận +1 ⭐ chuyên cần hôm nay! Tổng sao: ${found.stars} ⭐`);
+    }
+
+    // Initialize on load
+    window.addEventListener('DOMContentLoaded', () => {
+      drawWheel();
+      renderCards();
+      generateGroups();
+      renderLeaderboard();
+    });
+  </script>
+
+  <!-- OFFLINE STUDENT LOGIN MODAL -->
+  <div id="offlineStudentLoginModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs hidden">
+    <div class="bg-[#FFFDF9] rounded-3xl border-3 border-slate-900 shadow-2xl max-w-md w-full overflow-hidden animate-in fade-in zoom-in-95">
+      <div class="bg-gradient-to-r from-emerald-400 via-amber-300 to-purple-400 p-5 border-b-3 border-slate-900 relative">
+        <button onclick="closeStudentLoginModal()" class="absolute top-4 right-4 w-7 h-7 rounded-full bg-white border-2 border-slate-900 flex items-center justify-center text-slate-800 font-bold hover:bg-rose-100 cursor-pointer">✕</button>
+        <div class="text-xs font-black uppercase text-slate-900 tracking-wider bg-white/80 inline-block px-2.5 py-0.5 rounded-full border border-slate-900 mb-1">
+          ✨ Cổng Đăng Nhập Học Sinh
+        </div>
+        <h3 class="text-xl font-black text-slate-900">Engstar - THPT Đạ Tông</h3>
+        <p class="text-xs text-slate-800 font-bold">Giáo viên phụ trách: Cô Trinh</p>
+      </div>
+
+      <form onsubmit="submitOfflineStudentLogin(event)" class="p-6 space-y-4">
+        <div>
+          <label class="block text-xs font-black text-slate-900 uppercase mb-1">
+            👤 Họ và tên học sinh (Bắt buộc) *:
+          </label>
+          <input
+            id="offlineLoginName"
+            type="text"
+            placeholder="Ví dụ: K' Kră, Ka Hằng, Nguyễn Văn An..."
+            class="w-full px-4 py-3 rounded-2xl bg-amber-50 border-3 border-slate-900 text-slate-900 font-black text-base outline-none focus:bg-white"
+          />
+          <p id="offlineLoginError" class="text-xs text-rose-600 font-bold mt-1.5 hidden"></p>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-black text-slate-900 uppercase mb-1">🏫 Lớp học:</label>
+            <select id="offlineLoginClass" class="w-full px-3 py-2.5 rounded-xl bg-white border-2 border-slate-900 text-xs font-black">
+              <option value="10A1">10A1 (Tự Nhiên)</option>
+              <option value="10A2">10A2 (Xã Hội)</option>
+              <option value="12A3">12A3 (Luyện Thi ĐH)</option>
+              <option value="12A5">12A5 (Tốt Nghiệp)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-black text-slate-900 uppercase mb-1">📱 Thiết bị:</label>
+            <select id="offlineLoginDevice" class="w-full px-3 py-2.5 rounded-xl bg-white border-2 border-slate-900 text-xs font-black">
+              <option value="Điện thoại">📱 Điện thoại</option>
+              <option value="Máy tính">💻 Máy tính / Laptop</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="p-3 rounded-2xl bg-emerald-50 border border-emerald-300 text-xs text-emerald-950 font-semibold space-y-1">
+          <div class="font-black text-emerald-900">🎁 Quyền lợi đăng nhập:</div>
+          <div>• Tự động ghi nhận điểm danh có mặt trong ngày.</div>
+          <div>• Nhận ngay <strong>+1 ⭐ chuyên cần</strong> vào quỹ sao cá nhân.</div>
+        </div>
+
+        <button
+          type="submit"
+          class="w-full py-3.5 px-4 rounded-2xl bg-emerald-400 hover:bg-emerald-300 border-3 border-slate-900 text-slate-950 font-black text-base shadow-[3px_3px_0px_#0F172A] active:translate-y-0.5 cursor-pointer"
+        >
+          🚀 ĐĂNG NHẬP VÀO LỚP NGAY
+        </button>
+      </form>
+    </div>
+  </div>
+</body>
+</html>
